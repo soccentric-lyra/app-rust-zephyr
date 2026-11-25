@@ -1,0 +1,13 @@
+# Host-side test harness for the HWLINK framing module.
+#
+# The firmware depends on the Zephyr Rust module and cannot be built for the
+# host, so this crate includes the same src/protocol/hwlink/frame.rs and runs
+# its #[cfg(test)] suite with std.
+[package]
+name = "hwlink-frame-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"

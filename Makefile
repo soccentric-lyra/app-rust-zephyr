@@ -10,7 +10,10 @@
 #
 #   make                build the firmware (same as make build)
 #   make build          cmake + ninja (cargo inside), then .elf/.bin/.hex/.img in build/
-#   make lint           rustfmt --check and clippy -D warnings on the crate
+#   make lint           rustfmt --check and clippy -D warnings (single entry point)
+#   make test-host      run the HWLINK protocol tests on the host
+#   make boot-contract  check the board constants and flash overlay
+#   make image-check    validate the BOOT image header
 #   make clean          remove build/
 #   make rebuild        clean, then build
 #   make menuconfig     Zephyr Kconfig menu (interactive)
@@ -74,11 +77,13 @@ PYTHON   ?= python
 else
 PYTHON   ?= python3
 endif
+VERSION  := $(shell ci/version.sh)
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build lint clean rebuild menuconfig flash erase-all reset debug \
-        gdbserver serial probe size image help
+.PHONY: all build lint test-host boot-contract image-check clean rebuild \
+        menuconfig flash erase-all reset debug gdbserver serial probe size \
+        image help
 
 all: build
 
@@ -87,6 +92,15 @@ build:
 
 lint: build
 	$(LINT_CMD)
+
+test-host:
+	scripts/test-host.sh
+
+boot-contract:
+	$(PYTHON) scripts/check_boot_contract.py
+
+image-check:
+	$(PYTHON) scripts/check_image.py $(IMAGE) --version $(VERSION)
 
 clean:
 	rm -rf build

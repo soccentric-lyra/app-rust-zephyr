@@ -226,3 +226,104 @@ pub fn parse(frame: &[u8]) -> Option<Frame<'_>> {
         payload: &frame[4..frame.len() - 4],
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn build(payload: &[u8], flags: u8, seq: u16) -> ([u8; MAX_DECODED], [u8; MAX_ENCODED], usize) {
+        let mut raw = [0u8; MAX_DECODED];
+        let mut encoded = [0u8; MAX_ENCODED];
+        let len = encode(&mut raw, &mut encoded, flags, seq, payload)
+            .expect("frame must fit the test buffers");
+        (raw, encoded, len)
+    }
+
+    fn decode(encoded: &[u8]) -> Option<([u8; MAX_DECODED], usize)> {
+        let mut decoder = Decoder::new();
+        let mut done = false;
+        for &byte in encoded {
+            done = decoder.push(byte);
+        }
+        assert!(done, "encoded frame must end with the zero delimiter");
+        let mut out = [0u8; MAX_DECODED];
+        let len = decoder.take(&mut out)?;
+        Some((out, len))
+    }
+
+    #[test]
+    fn crc_matches_the_standard_check_value() {
+        assert_eq!(crc32(b"123456789"), 0xCBF4_3926);
+        assert_eq!(crc32(b""), 0);
+    }
+
+    #[test]
+    fn cobs_examples() {
+        let mut out = [0u8; 16];
+        let mut n = cobs_encode(&[0x00], &mut out).unwrap();
+        assert_eq!(&out[..n], &[0x01, 0x01, 0x00]);
+
+        n = cobs_encode(&[0x01, 0x00, 0x02], &mut out).unwrap();
+        assert_eq!(&out[..n], &[0x02, 0x01, 0x02, 0x02, 0x00]);
+    }
+
+    #[test]
+    fn cobs_rejects_bad_bodies() {
+        let mut out = [0u8; 16];
+        assert_eq!(cobs_decode(&[0x00], &mut out), None);
+        assert_eq!(cobs_decode(&[0x03, 0x01], &mut out), None);
+        assert_eq!(cobs_decode(&[0x05, 0x01], &mut out), None);
+    }
+
+    #[test]
+    fn roundtrip_preserves_header_and_payload() {
+        let payload = [0x00u8, 0x01, 0x02, 0xFE, 0xFF, 0x00];
+        let (_raw, encoded, len) = build(&payload, FLAG_RESPONSE, 0x1234);
+        let (out, got) = decode(&encoded[..len]).unwrap();
+        let frame = parse(&out[..got]).unwrap();
+        assert_eq!(frame.flags, FLAG_RESPONSE);
+        assert_eq!(frame.seq, 0x1234);
+        assert_eq!(frame.payload, &payload);
+    }
+
+    #[test]
+    fn cobs_block_boundaries() {
+        for len in 253..=255usize {
+            let payload = [0x5Au8; 255];
+            let (_raw, encoded, n) = build(&payload[..len], 0, 1);
+            let (out, got) = decode(&encoded[..n]).unwrap();
+            let frame = parse(&out[..got]).unwrap();
+            assert_eq!(frame.payload, &payload[..len]);
+        }
+    }
+
+    #[test]
+    fn rejects_corruption_and_wrong_protocol() {
+        let (mut raw, encoded, len) = build(&[0x01, 0x02, 0x03], 0, 7);
+        let mut corrupt = encoded;
+        corrupt[2] ^= 0xFF;
+        assert_eq!(decode(&corrupt[..len]), None);
+
+        raw[0] = PROTO_MAJOR + 1;
+        let crc = crc32(&raw[..7]);
+        raw[7..11].copy_from_slice(&crc.to_le_bytes());
+        let mut wrong = [0u8; MAX_ENCODED];
+        let n = cobs_encode(&raw[..11], &mut wrong).unwrap();
+        assert_eq!(decode(&wrong[..n]), None);
+    }
+
+    #[test]
+    fn parse_rejects_reserved_flags_and_short_frames() {
+        let (raw, _encoded, _len) = build(&[0x01], 0x04, 1);
+        assert!(parse(&raw[..9]).is_none());
+        assert!(parse(&[0u8; 7]).is_none());
+    }
+
+    #[test]
+    fn rejects_oversized_frames() {
+        let payload = [0u8; 2041];
+        let mut raw = [0u8; MAX_DECODED];
+        let mut encoded = [0u8; MAX_ENCODED];
+        assert!(encode(&mut raw, &mut encoded, 0, 1, &payload).is_none());
+    }
+}
