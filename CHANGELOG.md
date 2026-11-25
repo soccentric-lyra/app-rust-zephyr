@@ -8,6 +8,31 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Host test crate for `src/protocol/hwlink/frame.rs`: COBS examples, block
+  boundaries, CRC corruption, reserved flags and size limits
+- `make test-host`, `make boot-contract` and `make image-check` quality gates
+- `docs/architecture.md`: Rust/C layers, thread model, devicetree overlay,
+  boot hand-over and the remaining C responsibilities
+- `cargo audit` and `cargo deny` jobs plus a `deny.toml` policy
+- GitHub Actions workflow with build, lint, host tests and image checks
+
+### Changed
+
+- The pinned Zephyr and SDK versions stay in `docker/Dockerfile.zephyr`,
+  while the Rust module revision stays in the child `docker/Dockerfile`;
+  the split is now documented so the pin is easy to find
+- `make lint` is now documented as the single lint entry point;
+  `scripts/lint.sh` is its implementation
+- The `dt-rust.yaml` TODO is replaced with an explanation of the pinned
+  module's limitation instead of a loose end
+
+### Fixed
+
+- The README described `app-rust-freertos` as "Rust on Embassy"; it is Rust
+  on FreeRTOS
+
 ## [1.0.0] - 2026-11-19
 
 ### Added

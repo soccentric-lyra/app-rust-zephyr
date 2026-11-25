@@ -1,0 +1,37 @@
+# cargo-deny policy for the Embassy demo.
+#
+# The dependency tree is small and pinned by Cargo.lock.  The policy allows
+# the licences used by Embassy, cortex-m and the Rust ecosystem, denies
+# unknown registries and git sources, and reports duplicate versions without
+# failing the build (the embedded HAL crates legitimately carry two versions
+# during the ecosystem transition).
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "MPL-2.0",
+    "CC0-1.0",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

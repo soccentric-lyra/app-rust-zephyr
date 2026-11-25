@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  firmware:
+    name: Build, lint, tests and image checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build base toolchain image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker
+          file: docker/Dockerfile.base
+          tags: stm32-dev:latest
+          load: true
+          cache-from: type=gha,scope=base
+          cache-to: type=gha,mode=max,scope=base
+
+      - name: Build Rust-on-Zephyr toolchain image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker
+          file: docker/Dockerfile.zephyr
+          build-args: |
+            BASE_IMAGE=stm32-dev:latest
+          tags: stm32-dev-rust-zephyr:latest
+          load: true
+          cache-from: type=gha,scope=rust-zephyr
+          cache-to: type=gha,mode=max,scope=rust-zephyr
+
+      - name: Build firmware and enforce footprint
+        run: make build
+
+      - name: Lint (rustfmt and clippy)
+        run: make lint
+
+      - name: Host protocol tests
+        run: make test-host
+
+      - name: Boot contract
+        run: make boot-contract
+
+      - name: Image header
+        run: make image-check
+
+      - name: Upload image
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-rust-zephyr-image
+          path: |
+            build/rust-zephyr-app.img
+            build/rust-zephyr-app.elf
+            build/rust-zephyr-app.map
+          if-no-files-found: error
+
+  security:
+    name: Advisories and licences
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: cargo audit
+        uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: cargo deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          arguments: check advisories bans licenses sources
