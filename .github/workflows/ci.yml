@@ -26,7 +26,7 @@ jobs:
       - name: Build base toolchain image
         uses: docker/build-push-action@v6
         with:
-          context: docker
+          context: .
           file: docker/Dockerfile.base
           tags: stm32-dev:latest
           load: true
@@ -36,7 +36,7 @@ jobs:
       - name: Build Rust-on-Zephyr toolchain image
         uses: docker/build-push-action@v6
         with:
-          context: docker
+          context: .
           file: docker/Dockerfile.zephyr
           build-args: |
             BASE_IMAGE=stm32-dev:latest
