@@ -3,7 +3,11 @@
 # lint.sh - rustfmt and clippy for the Rust crate (RZGEN-006)
 #
 # Author:  Sandesh Ghimire <sandesh@soccentric.com>
-# Usage:   scripts/lint.sh             after scripts/build.sh has configured build/
+# Usage:   make lint                    (the supported entry point)
+#          scripts/lint.sh              after scripts/build.sh has configured build/
+#
+# `make lint` runs this script; call the script directly only when debugging
+# the lint tooling itself.
 #
 # Clippy needs the environment Zephyr's Rust module sets up for cargo
 # (DOTCONFIG, INCLUDE_DIRS, ...).  Rather than copy it, take the module's own

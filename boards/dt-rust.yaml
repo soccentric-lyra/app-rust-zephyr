@@ -58,7 +58,11 @@
 
 # Flash partitions exist as children of a node compatible with "soc-nv-flash" that itself is a child
 # of the controller itself.
-# TODO: Get the write and erase property from the DT if present.
+# The pinned zephyr-build revision (the one shipped with Zephyr v4.4.2) builds
+# the partition instance from reg only and does not read write/erase
+# properties.  This matches upstream dt-rust.yaml at that revision; the flash
+# driver still reports the real geometry at run time.  Revisit when the module
+# grows property arguments.
 - name: flash-partition
   rules:
     - !Compatible

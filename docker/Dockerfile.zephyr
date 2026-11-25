@@ -31,6 +31,9 @@ ENV VIRTUAL_ENV=/opt/venv \
 RUN python3 -m venv /opt/venv && pip install --no-cache-dir west
 
 # Zephyr at a release tag, shallow, with only the HAL and CMSIS modules.
+# The Rust language module is not part of this base image; the child
+# docker/Dockerfile pins it at ZEPHYR_RUST_REVISION and only the Rust apps
+# need it.
 ARG ZEPHYR_VERSION=v4.4.2
 ENV ZEPHYR_BASE=/opt/zephyrproject/zephyr
 RUN git clone --depth 1 --branch "${ZEPHYR_VERSION}" \
